@@ -1,0 +1,7 @@
+[package]
+name = "piston-test"
+version = "0.1.0"
+authors = ["Brandon Bremen <bbremen@gmail.com>"]
+
+[dependencies]
+piston_window = "0.73.0"
