@@ -1,12 +1,15 @@
 extern crate piston_window;
+extern crate sprite;
+extern crate find_folder;
 
+use std::rc::Rc;
+use std::boxed::Box;
 use piston_window::*;
+use sprite::*;
 
 #[allow(dead_code)]
 pub struct Ship {
-    // motion
-    position: math::Vec2d,
-    rotation: f64,
+    sprite: Box<Sprite<G2dTexture>>,
     velocity: math::Vec2d,
 
     // controls
@@ -15,22 +18,27 @@ pub struct Ship {
     rotating_right: bool,
 }
 
-impl Default for Ship {
-    fn default() -> Ship {
+impl Ship {
+    fn new(sprite: Box<Sprite<G2dTexture>>) -> Self {
         Ship {
-            position: [0.0, 0.0],
-            rotation: 0.0,
+            sprite,
             velocity: [0.0, 0.0],
             thrusters_on: false,
             rotating_left: false,
             rotating_right: false,
         }
     }
-}
 
-impl Ship {
-    fn rotation_speed(&self) -> f64 { 2.0 }
-    fn radius(&self) -> f64 { 20.0 }
+    /// positive dt rotates right, negative rotates left
+    fn rotate(&mut self, dt: f64) {
+        let new_rotation = self.sprite.get_rotation() + self.rotation_speed() * dt;
+        self.sprite.set_rotation(new_rotation)
+    }
+
+    fn rotation_speed(&self) -> f64 { 270.0 }
+
+    #[allow(dead_code)]
+    fn radius(&self) -> f64 { 16.0 }
 }
 
 pub struct Player {
@@ -38,32 +46,36 @@ pub struct Player {
 }
 
 pub struct App {
-    player: Player
+    player: Player,
 }
 
 impl App {
-    fn render(&mut self, event: &Event, window: &mut PistonWindow, args: &RenderArgs) {
+    fn new(window: &mut PistonWindow) -> Self {
+        let images = find_folder::Search::ParentsThenKids(3, 3)
+            .for_folder("assets/images").unwrap();
+        let player_image_path = images.join("player.png");
+        let player_tex = Rc::new(Texture::from_path(
+            &mut window.factory,
+            &player_image_path,
+            Flip::None,
+            &TextureSettings::new()
+        ).unwrap());
+
+        let mut player_sprite = Sprite::from_texture(player_tex.clone());
+        player_sprite.set_position(320.0, 240.0);
+
+        return App {
+            player: Player {
+                ship: Ship::new(Box::new(player_sprite))
+            },
+       };
+    }
+
+    fn render(&mut self, event: &Event, window: &mut PistonWindow) {
         window.draw_2d(event, |context, graphics| {
-            clear([1.0; 4], graphics);
+            clear([0.0; 4], graphics);
 
-            let rect_size = [self.player.ship.radius() * 2.0, self.player.ship.radius() * 2.0];
-            let rect_midpoint = [rect_size[0] / 2.0, rect_size[1] / 2.0];
-
-            use math::*;
-
-            // translate to the middle of the viewport
-            let t = multiply(context.transform, translate([
-                args.width as f64 / 2.0 - rect_midpoint[0],
-                args.height as f64 / 2.0 - rect_midpoint[1]]));
-            // rotate around the midpoint of the square
-            let t = multiply(t, translate(rect_midpoint));
-            let t = multiply(t, rotate_radians(self.player.ship.rotation));
-            let t = multiply(t, translate(math::mul_scalar(rect_midpoint, -1.0)));
-
-            rectangle([1.0, 0.0, 0.0, 1.0], // red
-                      [0.0, 0.0, rect_size[0], rect_size[1]],
-                      t,
-                      graphics);
+            self.player.ship.sprite.draw(context.transform, graphics);
         });
 
     }
@@ -72,11 +84,11 @@ impl App {
         let player_ship = &mut self.player.ship;
 
         if player_ship.rotating_left {
-            player_ship.rotation -= player_ship.rotation_speed() * args.dt;
+            player_ship.rotate(- args.dt);
         }
 
         if player_ship.rotating_right {
-            player_ship.rotation += player_ship.rotation_speed() * args.dt;
+            player_ship.rotate(args.dt);
         }
     }
 
@@ -96,14 +108,12 @@ fn main() {
             .exit_on_esc(true).build().unwrap();
 
 
-    let mut app = App {
-        player: Player { ship: Default::default() }
-    };
+    let mut app = App::new(&mut window);
 
     while let Some(event) = window.next() {
 
-        if let Some(r) = event.render_args() {
-            app.render(&event, &mut window, &r);
+        if let Some(_) = event.render_args() {
+            app.render(&event, &mut window);
         }
 
         if let Some(u) = event.update_args() {

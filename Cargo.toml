@@ -5,3 +5,5 @@ authors = ["Brandon Bremen <bbremen@gmail.com>"]
 
 [dependencies]
 piston_window = "0.73.0"
+piston2d-sprite = "0.40.0"
+find_folder = "0.3.0"
