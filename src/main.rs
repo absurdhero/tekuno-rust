@@ -7,6 +7,8 @@ use std::boxed::Box;
 use piston_window::*;
 use sprite::*;
 
+const WINDOW_SIZE: Size = Size { width: 800, height: 600 };
+
 pub struct Ship {
     sprite: Box<Sprite<G2dTexture>>,
     velocity: math::Vec2d,
@@ -44,8 +46,29 @@ impl Ship {
         }
 
         let pos = self.sprite.get_position();
+        let mut x = pos.0 + self.velocity[0];
+        let mut y = pos.1 + self.velocity[1];
         self.sprite.set_position(
             pos.0 + self.velocity[0], pos.1 + self.velocity[1]);
+
+
+//        // wrap around the screen
+        let width = WINDOW_SIZE.width as f64;
+        if x > width {
+            x -= width;
+        } else if x < 0.0 {
+            x += width;
+        }
+
+        let height = WINDOW_SIZE.height as f64;
+        if y > height {
+            y -= height;
+        } else if y < 0.0 {
+            y += height;
+        }
+
+        self.sprite.set_position(x, y);
+
     }
 
     /// positive dt rotates right, negative rotates left
@@ -125,7 +148,8 @@ impl App {
 
 fn main() {
     let mut window: PistonWindow =
-        WindowSettings::new("Tekuno", [800, 600])
+        WindowSettings::new("Tekuno", WINDOW_SIZE)
+            .resizable(false)
             .exit_on_esc(true).build().unwrap();
 
 
