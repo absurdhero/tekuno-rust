@@ -7,7 +7,6 @@ use std::boxed::Box;
 use piston_window::*;
 use sprite::*;
 
-#[allow(dead_code)]
 pub struct Ship {
     sprite: Box<Sprite<G2dTexture>>,
     velocity: math::Vec2d,
@@ -29,6 +28,26 @@ impl Ship {
         }
     }
 
+    fn update_position(&mut self, dt: f64) {
+        if self.rotating_left {
+            self.rotate(-dt);
+        }
+
+        if self.rotating_right {
+            self.rotate(dt);
+        }
+
+        if self.thrusters_on {
+            let theta = self.sprite.get_rotation().to_radians();
+            self.velocity[0] += self.thrust() * theta.cos();
+            self.velocity[1] += self.thrust() * theta.sin();
+        }
+
+        let pos = self.sprite.get_position();
+        self.sprite.set_position(
+            pos.0 + self.velocity[0], pos.1 + self.velocity[1]);
+    }
+
     /// positive dt rotates right, negative rotates left
     fn rotate(&mut self, dt: f64) {
         let mut new_rotation = self.sprite.get_rotation() + self.rotation_speed() * dt;
@@ -43,10 +62,9 @@ impl Ship {
         self.sprite.set_rotation(new_rotation)
     }
 
-    fn rotation_speed(&self) -> f64 { 270.0 }
-
     #[allow(dead_code)]
     fn radius(&self) -> f64 { 16.0 }
+    fn rotation_speed(&self) -> f64 { 270.0 }
     fn thrust(&self) -> f64 { 0.02 }
 }
 
@@ -71,7 +89,9 @@ impl App {
         ).unwrap());
 
         let mut player_sprite = Sprite::from_texture(player_tex.clone());
-        player_sprite.set_position(320.0, 240.0);
+        player_sprite.set_position(
+            window.draw_size().width as f64 / 2.0,
+            window.draw_size().height as f64 / 2.0);
 
         return App {
             player: Player {
@@ -90,25 +110,7 @@ impl App {
     }
 
     fn update(&mut self, args: &UpdateArgs) {
-        let player_ship = &mut self.player.ship;
-
-        if player_ship.rotating_left {
-            player_ship.rotate(- args.dt);
-        }
-
-        if player_ship.rotating_right {
-            player_ship.rotate(args.dt);
-        }
-
-        if player_ship.thrusters_on {
-            let theta = player_ship.sprite.get_rotation().to_radians();
-            player_ship.velocity[0] += player_ship.thrust() * theta.cos();
-            player_ship.velocity[1] += player_ship.thrust() * theta.sin();
-        }
-
-        let pos = player_ship.sprite.get_position();
-        player_ship.sprite.set_position(
-            pos.0 + player_ship.velocity[0], pos.1 + player_ship.velocity[1]);
+        self.player.ship.update_position(args.dt);
     }
 
     fn key_down(&mut self, state: ButtonState, key: Key) {
@@ -123,7 +125,7 @@ impl App {
 
 fn main() {
     let mut window: PistonWindow =
-        WindowSettings::new("Tekuno", [640, 480])
+        WindowSettings::new("Tekuno", [800, 600])
             .exit_on_esc(true).build().unwrap();
 
 
