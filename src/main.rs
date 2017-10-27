@@ -31,7 +31,15 @@ impl Ship {
 
     /// positive dt rotates right, negative rotates left
     fn rotate(&mut self, dt: f64) {
-        let new_rotation = self.sprite.get_rotation() + self.rotation_speed() * dt;
+        let mut new_rotation = self.sprite.get_rotation() + self.rotation_speed() * dt;
+
+        if new_rotation > 360.0 {
+            new_rotation -= 360.0;
+        }
+        if new_rotation < 0.0 {
+            new_rotation += 360.0;
+        }
+
         self.sprite.set_rotation(new_rotation)
     }
 
@@ -39,6 +47,7 @@ impl Ship {
 
     #[allow(dead_code)]
     fn radius(&self) -> f64 { 16.0 }
+    fn thrust(&self) -> f64 { 0.02 }
 }
 
 pub struct Player {
@@ -90,6 +99,16 @@ impl App {
         if player_ship.rotating_right {
             player_ship.rotate(args.dt);
         }
+
+        if player_ship.thrusters_on {
+            let theta = player_ship.sprite.get_rotation().to_radians();
+            player_ship.velocity[0] += player_ship.thrust() * theta.cos();
+            player_ship.velocity[1] += player_ship.thrust() * theta.sin();
+        }
+
+        let pos = player_ship.sprite.get_position();
+        player_ship.sprite.set_position(
+            pos.0 + player_ship.velocity[0], pos.1 + player_ship.velocity[1]);
     }
 
     fn key_down(&mut self, state: ButtonState, key: Key) {
